@@ -774,6 +774,12 @@ export async function runEmbeddedAttempt(
             // Enforce sandbox path restrictions when sandbox is enabled
             sandboxRoot: sandbox?.enabled ? sandbox.workspaceDir : undefined,
           });
+          // Log when attachments were sent but dropped (e.g. model has no vision)
+          if ((params.images?.length ?? 0) > 0 && imageResult.images.length === 0) {
+            log.warn(
+              `runId=${params.runId} sessionId=${params.sessionId}: ${params.images!.length} image(s) were not sent to the model (use a vision-capable model, e.g. one with input including "image")`,
+            );
+          }
 
           // Inject history images into their original message positions.
           // This ensures the model sees images in context (e.g., "compare to the first image").

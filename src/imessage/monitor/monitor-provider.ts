@@ -549,6 +549,21 @@ export async function monitorIMessageProvider(opts: MonitorIMessageOpts = {}): P
     }
 
     const imessageTo = (isGroup ? chatTarget : undefined) || `imessage:${sender}`;
+    const groupSystemPrompt = (() => {
+      if (!isGroup || !imessageCfg) {
+        return undefined;
+      }
+      const accountPrompt = imessageCfg.systemPrompt?.trim() || null;
+      const groups = imessageCfg.groups;
+      const groupIdStr = groupId ? String(groupId) : undefined;
+      const defaultGroupPrompt = groups?.["*"]?.systemPrompt?.trim() || null;
+      const specificGroupPrompt =
+        (groupIdStr && groups?.[groupIdStr]?.systemPrompt?.trim()) || null;
+      const parts = [accountPrompt, defaultGroupPrompt, specificGroupPrompt].filter(
+        (p): p is string => Boolean(p),
+      );
+      return parts.length > 0 ? parts.join("\n\n") : undefined;
+    })();
     const ctxPayload = finalizeInboundContext({
       Body: combinedBody,
       RawBody: bodyText,
@@ -561,6 +576,7 @@ export async function monitorIMessageProvider(opts: MonitorIMessageOpts = {}): P
       ConversationLabel: fromLabel,
       GroupSubject: isGroup ? (message.chat_name ?? undefined) : undefined,
       GroupMembers: isGroup ? (message.participants ?? []).filter(Boolean).join(", ") : undefined,
+      GroupSystemPrompt: isGroup ? groupSystemPrompt : undefined,
       SenderName: senderNormalized,
       SenderId: sender,
       Provider: "imessage",

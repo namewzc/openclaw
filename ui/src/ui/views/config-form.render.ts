@@ -1,5 +1,6 @@
 import { html, nothing } from "lit";
 import type { ConfigUiHints } from "../types.ts";
+import { t } from "../i18n.ts";
 import { icons } from "../icons.ts";
 import { renderNode } from "./config-form.node.ts";
 import { hintForPath, humanize, schemaType, type JsonSchema } from "./config-form.shared.ts";
@@ -236,43 +237,63 @@ const sectionIcons = {
   `,
 };
 
-// Section metadata
-export const SECTION_META: Record<string, { label: string; description: string }> = {
-  env: {
-    label: "Environment Variables",
-    description: "Environment variables passed to the gateway process",
-  },
-  update: { label: "Updates", description: "Auto-update settings and release channel" },
-  agents: { label: "Agents", description: "Agent configurations, models, and identities" },
-  auth: { label: "Authentication", description: "API keys and authentication profiles" },
-  channels: {
-    label: "Channels",
-    description: "Messaging channels (Telegram, Discord, Slack, etc.)",
-  },
-  messages: { label: "Messages", description: "Message handling and routing settings" },
-  commands: { label: "Commands", description: "Custom slash commands" },
-  hooks: { label: "Hooks", description: "Webhooks and event hooks" },
-  skills: { label: "Skills", description: "Skill packs and capabilities" },
-  tools: { label: "Tools", description: "Tool configurations (browser, search, etc.)" },
-  gateway: { label: "Gateway", description: "Gateway server settings (port, auth, binding)" },
-  wizard: { label: "Setup Wizard", description: "Setup wizard state and history" },
-  // Additional sections
-  meta: { label: "Metadata", description: "Gateway metadata and version information" },
-  logging: { label: "Logging", description: "Log levels and output configuration" },
-  browser: { label: "Browser", description: "Browser automation settings" },
-  ui: { label: "UI", description: "User interface preferences" },
-  models: { label: "Models", description: "AI model configurations and providers" },
-  bindings: { label: "Bindings", description: "Key bindings and shortcuts" },
-  broadcast: { label: "Broadcast", description: "Broadcast and notification settings" },
-  audio: { label: "Audio", description: "Audio input/output settings" },
-  session: { label: "Session", description: "Session management and persistence" },
-  cron: { label: "Cron", description: "Scheduled tasks and automation" },
-  web: { label: "Web", description: "Web server and API settings" },
-  discovery: { label: "Discovery", description: "Service discovery and networking" },
-  canvasHost: { label: "Canvas Host", description: "Canvas rendering and display" },
-  talk: { label: "Talk", description: "Voice and speech settings" },
-  plugins: { label: "Plugins", description: "Plugin management and extensions" },
-};
+// Section keys for i18n lookup
+const SECTION_KEYS = [
+  "env",
+  "update",
+  "agents",
+  "auth",
+  "channels",
+  "messages",
+  "commands",
+  "hooks",
+  "skills",
+  "tools",
+  "gateway",
+  "wizard",
+  "meta",
+  "logging",
+  "browser",
+  "ui",
+  "models",
+  "bindings",
+  "broadcast",
+  "audio",
+  "session",
+  "cron",
+  "web",
+  "discovery",
+  "canvasHost",
+  "talk",
+  "plugins",
+] as const;
+
+/** Get localized section metadata */
+export function getSectionMeta(key: string): { label: string; description: string } | undefined {
+  if (!SECTION_KEYS.includes(key as (typeof SECTION_KEYS)[number])) {
+    return undefined;
+  }
+  return {
+    label: t(`section.${key}.label`),
+    description: t(`section.${key}.description`),
+  };
+}
+
+// Section metadata (for backward compatibility and type checking)
+export const SECTION_META: Record<string, { label: string; description: string }> =
+  Object.fromEntries(
+    SECTION_KEYS.map((key) => [
+      key,
+      {
+        get label() {
+          return t(`section.${key}.label`);
+        },
+        get description() {
+          return t(`section.${key}.description`);
+        },
+      },
+    ]),
+  );
 
 function getSectionIcon(key: string) {
   return sectionIcons[key as keyof typeof sectionIcons] ?? sectionIcons.default;

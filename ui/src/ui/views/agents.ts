@@ -17,6 +17,7 @@ import {
   resolveToolProfilePolicy,
 } from "../../../../src/agents/tool-policy.js";
 import { formatAgo } from "../format.ts";
+import { t } from "../i18n.ts";
 import {
   formatCronPayload,
   formatCronSchedule,
@@ -82,89 +83,42 @@ export type AgentsProps = {
   onAgentSkillsDisableAll: (agentId: string) => void;
 };
 
-const TOOL_SECTIONS = [
-  {
-    id: "fs",
-    label: "Files",
-    tools: [
-      { id: "read", label: "read", description: "Read file contents" },
-      { id: "write", label: "write", description: "Create or overwrite files" },
-      { id: "edit", label: "edit", description: "Make precise edits" },
-      { id: "apply_patch", label: "apply_patch", description: "Patch files (OpenAI)" },
-    ],
-  },
-  {
-    id: "runtime",
-    label: "Runtime",
-    tools: [
-      { id: "exec", label: "exec", description: "Run shell commands" },
-      { id: "process", label: "process", description: "Manage background processes" },
-    ],
-  },
-  {
-    id: "web",
-    label: "Web",
-    tools: [
-      { id: "web_search", label: "web_search", description: "Search the web" },
-      { id: "web_fetch", label: "web_fetch", description: "Fetch web content" },
-    ],
-  },
-  {
-    id: "memory",
-    label: "Memory",
-    tools: [
-      { id: "memory_search", label: "memory_search", description: "Semantic search" },
-      { id: "memory_get", label: "memory_get", description: "Read memory files" },
-    ],
-  },
+// Tool section data - labels/descriptions use i18n keys
+const TOOL_SECTION_DATA = [
+  { id: "fs", tools: ["read", "write", "edit", "apply_patch"] },
+  { id: "runtime", tools: ["exec", "process"] },
+  { id: "web", tools: ["web_search", "web_fetch"] },
+  { id: "memory", tools: ["memory_search", "memory_get"] },
   {
     id: "sessions",
-    label: "Sessions",
     tools: [
-      { id: "sessions_list", label: "sessions_list", description: "List sessions" },
-      { id: "sessions_history", label: "sessions_history", description: "Session history" },
-      { id: "sessions_send", label: "sessions_send", description: "Send to session" },
-      { id: "sessions_spawn", label: "sessions_spawn", description: "Spawn sub-agent" },
-      { id: "session_status", label: "session_status", description: "Session status" },
+      "sessions_list",
+      "sessions_history",
+      "sessions_send",
+      "sessions_spawn",
+      "session_status",
     ],
   },
-  {
-    id: "ui",
-    label: "UI",
-    tools: [
-      { id: "browser", label: "browser", description: "Control web browser" },
-      { id: "canvas", label: "canvas", description: "Control canvases" },
-    ],
-  },
-  {
-    id: "messaging",
-    label: "Messaging",
-    tools: [{ id: "message", label: "message", description: "Send messages" }],
-  },
-  {
-    id: "automation",
-    label: "Automation",
-    tools: [
-      { id: "cron", label: "cron", description: "Schedule tasks" },
-      { id: "gateway", label: "gateway", description: "Gateway control" },
-    ],
-  },
-  {
-    id: "nodes",
-    label: "Nodes",
-    tools: [{ id: "nodes", label: "nodes", description: "Nodes + devices" }],
-  },
-  {
-    id: "agents",
-    label: "Agents",
-    tools: [{ id: "agents_list", label: "agents_list", description: "List agents" }],
-  },
-  {
-    id: "media",
-    label: "Media",
-    tools: [{ id: "image", label: "image", description: "Image understanding" }],
-  },
-];
+  { id: "ui", tools: ["browser", "canvas"] },
+  { id: "messaging", tools: ["message"] },
+  { id: "automation", tools: ["cron", "gateway"] },
+  { id: "nodes", tools: ["nodes"] },
+  { id: "agents", tools: ["agents_list"] },
+  { id: "media", tools: ["image"] },
+] as const;
+
+/** Get localized tool sections */
+function getToolSections() {
+  return TOOL_SECTION_DATA.map((section) => ({
+    id: section.id,
+    label: t(`tools.${section.id}`),
+    tools: section.tools.map((toolId) => ({
+      id: toolId,
+      label: toolId,
+      description: t(`tools.${section.id}.${toolId}`),
+    })),
+  }));
+}
 
 const PROFILE_OPTIONS = [
   { id: "minimal", label: "Minimal" },
@@ -1462,7 +1416,8 @@ function renderAgentTools(params: {
   const basePolicy = hasAgentAllow
     ? { allow: agentTools.allow ?? [], deny: agentTools.deny ?? [] }
     : (resolveToolProfilePolicy(profile) ?? undefined);
-  const toolIds = TOOL_SECTIONS.flatMap((section) => section.tools.map((tool) => tool.id));
+  const toolSections = getToolSections();
+  const toolIds = toolSections.flatMap((section) => section.tools.map((tool) => tool.id));
 
   const resolveAllowed = (toolId: string) => {
     const baseAllowed = isAllowedByPolicy(toolId, basePolicy);
@@ -1637,7 +1592,7 @@ function renderAgentTools(params: {
       </div>
 
       <div class="agent-tools-grid" style="margin-top: 20px;">
-        ${TOOL_SECTIONS.map(
+        ${toolSections.map(
           (section) =>
             html`
             <div class="agent-tools-section">

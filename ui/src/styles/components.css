@@ -281,6 +281,67 @@
 }
 
 /* ===========================================
+   Language Toggle
+   =========================================== */
+
+.language-toggle {
+  --locale-item: 28px;
+  --locale-gap: 2px;
+  --locale-pad: 4px;
+  position: relative;
+}
+
+.language-toggle__track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, var(--locale-item));
+  gap: var(--locale-gap);
+  padding: var(--locale-pad);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--secondary);
+}
+
+.language-toggle__indicator {
+  position: absolute;
+  top: 50%;
+  left: var(--locale-pad);
+  width: var(--locale-item);
+  height: var(--locale-item);
+  border-radius: var(--radius-full);
+  transform: translateY(-50%)
+    translateX(calc(var(--locale-index, 0) * (var(--locale-item) + var(--locale-gap))));
+  background: var(--accent);
+  transition: transform var(--duration-normal) var(--ease-out);
+  z-index: 0;
+}
+
+.language-toggle__button {
+  height: var(--locale-item);
+  width: var(--locale-item);
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  font-weight: 600;
+  transition: color var(--duration-fast) ease;
+}
+
+.language-toggle__button:hover {
+  color: var(--text);
+}
+
+.language-toggle__button.active {
+  color: var(--accent-foreground);
+}
+
+/* ===========================================
    Status Dot - With glow for emphasis
    =========================================== */
 

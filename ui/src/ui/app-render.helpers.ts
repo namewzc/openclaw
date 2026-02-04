@@ -8,6 +8,7 @@ import { refreshChat } from "./app-chat.ts";
 import { syncUrlWithSessionKey } from "./app-settings.ts";
 import { OpenClawApp } from "./app.ts";
 import { ChatState, loadChatHistory } from "./controllers/chat.ts";
+import { getLocale, setLocale, type Locale } from "./i18n.ts";
 import { icons } from "./icons.ts";
 import { iconForTab, pathForTab, titleForTab, type Tab } from "./navigation.ts";
 
@@ -341,5 +342,44 @@ function renderMonitorIcon() {
       <line x1="8" x2="16" y1="21" y2="21"></line>
       <line x1="12" x2="12" y1="17" y2="21"></line>
     </svg>
+  `;
+}
+
+const LOCALE_ORDER: Locale[] = ["en", "zh-CN"];
+
+export function renderLanguageToggle(state: AppViewState) {
+  const currentLocale = getLocale();
+  const index = Math.max(0, LOCALE_ORDER.indexOf(currentLocale));
+
+  const applyLocale = (next: Locale) => () => {
+    setLocale(next);
+    // Trigger re-render by forcing state update
+    state.applySettings({ ...state.settings });
+  };
+
+  return html`
+    <div class="language-toggle" style="--locale-index: ${index};">
+      <div class="language-toggle__track" role="group" aria-label="Language">
+        <span class="language-toggle__indicator"></span>
+        <button
+          class="language-toggle__button ${currentLocale === "en" ? "active" : ""}"
+          @click=${applyLocale("en")}
+          aria-pressed=${currentLocale === "en"}
+          aria-label="English"
+          title="English"
+        >
+          EN
+        </button>
+        <button
+          class="language-toggle__button ${currentLocale === "zh-CN" ? "active" : ""}"
+          @click=${applyLocale("zh-CN")}
+          aria-pressed=${currentLocale === "zh-CN"}
+          aria-label="中文"
+          title="中文"
+        >
+          中
+        </button>
+      </div>
+    </div>
   `;
 }

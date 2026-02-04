@@ -182,7 +182,12 @@
 .topbar-status .theme-toggle {
   --theme-item: 24px;
   --theme-gap: 2px;
-  --theme-pad: 3px;
+}
+
+.topbar-status .language-toggle {
+  --locale-item: 24px;
+  --locale-gap: 2px;
+  --locale-pad: 3px;
 }
 
 .topbar-status .theme-icon {

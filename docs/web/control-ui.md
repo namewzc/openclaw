@@ -89,6 +89,7 @@ Cron jobs panel notes:
 - `chat.send` is **non-blocking**: it acks immediately with `{ runId, status: "started" }` and the response streams via `chat` events.
 - Re-sending with the same `idempotencyKey` returns `{ status: "in_flight" }` while running, and `{ status: "ok" }` after completion.
 - `chat.inject` appends an assistant note to the session transcript and broadcasts a `chat` event for UI-only updates (no agent run, no channel delivery).
+- **Images:** You can paste images into the message box (Ctrl+V / Cmd+V). The model receives them only if the **session model supports vision** (its profile must include `input: ["text", "image"]`). If the model does not support images, attachments are dropped and the gateway logs a warning. Use a vision-capable model (e.g. Claude 3, GPT-4V, Gemini with vision) for that session. Chat history loaded from the session transcript may not include image blocks in earlier user messages.
 - Stop:
   - Click **Stop** (calls `chat.abort`)
   - Type `/stop` (or `stop|esc|abort|wait|exit|interrupt`) to abort out-of-band

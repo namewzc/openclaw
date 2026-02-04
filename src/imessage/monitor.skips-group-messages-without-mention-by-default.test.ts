@@ -393,6 +393,52 @@ describe("monitorIMessageProvider", () => {
     );
   });
 
+  it("passes group and account systemPrompt as GroupSystemPrompt for group chats", async () => {
+    config = {
+      ...config,
+      channels: {
+        ...config.channels,
+        imessage: {
+          ...config.channels?.imessage,
+          systemPrompt: "Keep answers brief.",
+          groups: {
+            "*": { requireMention: true, systemPrompt: "Default group rule." },
+            "42": { requireMention: true, systemPrompt: "Lobster Squad rule." },
+          },
+        },
+      },
+    };
+    replyMock.mockResolvedValueOnce({ text: "ok" });
+    const run = monitorIMessageProvider();
+    await waitForSubscribe();
+
+    notificationHandler?.({
+      method: "message",
+      params: {
+        message: {
+          id: 2,
+          chat_id: 42,
+          sender: "+15550002222",
+          is_from_me: false,
+          text: "@openclaw hi",
+          is_group: true,
+          chat_name: "Lobster Squad",
+          participants: ["+1555", "+1556"],
+        },
+      },
+    });
+
+    await flush();
+    closeResolve?.();
+    await run;
+
+    expect(replyMock).toHaveBeenCalledOnce();
+    const ctx = replyMock.mock.calls[0]?.[0] as { GroupSystemPrompt?: string };
+    expect(ctx.GroupSystemPrompt).toBe(
+      "Keep answers brief.\n\nDefault group rule.\n\nLobster Squad rule.",
+    );
+  });
+
   it("honors group allowlist when groupPolicy is allowlist", async () => {
     config = {
       ...config,

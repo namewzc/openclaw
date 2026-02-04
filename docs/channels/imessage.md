@@ -234,7 +234,7 @@ Example:
       groupPolicy: "allowlist",
       groupAllowFrom: ["+15555550123"],
       groups: {
-        "42": { requireMention: false },
+        "42": { requireMention: false, systemPrompt: "Keep answers short for this thread." },
       },
     },
   },
@@ -287,7 +287,8 @@ Provider options:
 - `channels.imessage.groupAllowFrom`: group sender allowlist.
 - `channels.imessage.historyLimit` / `channels.imessage.accounts.*.historyLimit`: max group messages to include as context (0 disables).
 - `channels.imessage.dmHistoryLimit`: DM history limit in user turns. Per-user overrides: `channels.imessage.dms["<handle>"].historyLimit`.
-- `channels.imessage.groups`: per-group defaults + allowlist (use `"*"` for global defaults).
+- `channels.imessage.groups`: per-group defaults + allowlist (use `"*"` for global defaults). Each entry can include `systemPrompt` (extra system prompt for that group); account-level `channels.imessage.systemPrompt` applies to all group chats and is prepended.
+- `channels.imessage.systemPrompt`: optional system prompt snippet for this account; for group chats it is combined with group-level `systemPrompt` and injected as extra context.
 - `channels.imessage.includeAttachments`: ingest attachments into context.
 - `channels.imessage.mediaMaxMb`: inbound/outbound media cap (MB).
 - `channels.imessage.textChunkLimit`: outbound chunk size (chars).

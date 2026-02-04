@@ -1,5 +1,6 @@
 import { html, nothing } from "lit";
 import type { ConfigUiHints } from "../types.ts";
+import { t } from "../i18n.ts";
 import { hintForPath, humanize, schemaType, type JsonSchema } from "./config-form.shared.ts";
 import { analyzeConfigSchema, renderConfigForm, SECTION_META } from "./config-form.ts";
 
@@ -262,21 +263,29 @@ const sidebarIcons = {
   `,
 };
 
-// Section definitions
-const SECTIONS: Array<{ key: string; label: string }> = [
-  { key: "env", label: "Environment" },
-  { key: "update", label: "Updates" },
-  { key: "agents", label: "Agents" },
-  { key: "auth", label: "Authentication" },
-  { key: "channels", label: "Channels" },
-  { key: "messages", label: "Messages" },
-  { key: "commands", label: "Commands" },
-  { key: "hooks", label: "Hooks" },
-  { key: "skills", label: "Skills" },
-  { key: "tools", label: "Tools" },
-  { key: "gateway", label: "Gateway" },
-  { key: "wizard", label: "Setup Wizard" },
-];
+// Section keys for navigation
+const SECTION_KEYS = [
+  "env",
+  "update",
+  "agents",
+  "auth",
+  "channels",
+  "messages",
+  "commands",
+  "hooks",
+  "skills",
+  "tools",
+  "gateway",
+  "wizard",
+] as const;
+
+/** Get localized section label for sidebar */
+function getSectionLabel(key: string): string {
+  return t(`section.${key}`);
+}
+
+// Section definitions (computed at render time for i18n)
+const SECTIONS = SECTION_KEYS.map((key) => ({ key }));
 
 type SubsectionEntry = {
   key: string;
@@ -393,10 +402,10 @@ export function renderConfig(props: ConfigProps) {
   const availableSections = SECTIONS.filter((s) => s.key in schemaProps);
 
   // Add any sections in schema but not in our list
-  const knownKeys = new Set(SECTIONS.map((s) => s.key));
+  const knownKeys = new Set<string>(SECTIONS.map((s) => s.key));
   const extraSections = Object.keys(schemaProps)
     .filter((k) => !knownKeys.has(k))
-    .map((k) => ({ key: k, label: k.charAt(0).toUpperCase() + k.slice(1) }));
+    .map((k) => ({ key: k }));
 
   const allSections = [...availableSections, ...extraSections];
 
@@ -509,7 +518,7 @@ export function renderConfig(props: ConfigProps) {
                 <span class="config-nav__icon"
                   >${getSectionIcon(section.key)}</span
                 >
-                <span class="config-nav__label">${section.label}</span>
+                <span class="config-nav__label">${getSectionLabel(section.key)}</span>
               </button>
             `,
           )}

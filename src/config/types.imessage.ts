@@ -29,6 +29,8 @@ export type IMessageAccountConfig = {
   service?: "imessage" | "sms" | "auto";
   /** Optional default region (used when sending SMS). */
   region?: string;
+  /** Optional system prompt snippet for this account (groups: appended for group chats). */
+  systemPrompt?: string;
   /** Direct message access policy (default: pairing). */
   dmPolicy?: DmPolicy;
   /** Optional allowlist for inbound handles or chat_id targets. */
@@ -65,6 +67,8 @@ export type IMessageAccountConfig = {
     string,
     {
       requireMention?: boolean;
+      /** Optional system prompt snippet for this group (appended after account systemPrompt). */
+      systemPrompt?: string;
       tools?: GroupToolPolicyConfig;
       toolsBySender?: GroupToolPolicyBySenderConfig;
     }

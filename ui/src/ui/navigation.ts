@@ -1,14 +1,23 @@
 import type { IconName } from "./icons.js";
+import { t } from "./i18n.js";
+
+// Tab group keys for i18n lookup
+const TAB_GROUP_KEYS = ["chat", "control", "agent", "settings"] as const;
 
 export const TAB_GROUPS = [
-  { label: "Chat", tabs: ["chat"] },
+  { key: "chat", tabs: ["chat"] },
   {
-    label: "Control",
+    key: "control",
     tabs: ["overview", "channels", "instances", "sessions", "cron"],
   },
-  { label: "Agent", tabs: ["agents", "skills", "nodes"] },
-  { label: "Settings", tabs: ["config", "debug", "logs"] },
+  { key: "agent", tabs: ["agents", "skills", "nodes"] },
+  { key: "settings", tabs: ["config", "debug", "logs"] },
 ] as const;
+
+/** Get localized label for a tab group */
+export function labelForTabGroup(key: (typeof TAB_GROUP_KEYS)[number]): string {
+  return t(`nav.group.${key}`);
+}
 
 export type Tab =
   | "agents"
@@ -151,64 +160,13 @@ export function iconForTab(tab: Tab): IconName {
   }
 }
 
-export function titleForTab(tab: Tab) {
-  switch (tab) {
-    case "agents":
-      return "Agents";
-    case "overview":
-      return "Overview";
-    case "channels":
-      return "Channels";
-    case "instances":
-      return "Instances";
-    case "sessions":
-      return "Sessions";
-    case "cron":
-      return "Cron Jobs";
-    case "skills":
-      return "Skills";
-    case "nodes":
-      return "Nodes";
-    case "chat":
-      return "Chat";
-    case "config":
-      return "Config";
-    case "debug":
-      return "Debug";
-    case "logs":
-      return "Logs";
-    default:
-      return "Control";
-  }
+export function titleForTab(tab: Tab): string {
+  return t(`tab.${tab}`);
 }
 
-export function subtitleForTab(tab: Tab) {
-  switch (tab) {
-    case "agents":
-      return "Manage agent workspaces, tools, and identities.";
-    case "overview":
-      return "Gateway status, entry points, and a fast health read.";
-    case "channels":
-      return "Manage channels and settings.";
-    case "instances":
-      return "Presence beacons from connected clients and nodes.";
-    case "sessions":
-      return "Inspect active sessions and adjust per-session defaults.";
-    case "cron":
-      return "Schedule wakeups and recurring agent runs.";
-    case "skills":
-      return "Manage skill availability and API key injection.";
-    case "nodes":
-      return "Paired devices, capabilities, and command exposure.";
-    case "chat":
-      return "Direct gateway chat session for quick interventions.";
-    case "config":
-      return "Edit ~/.openclaw/openclaw.json safely.";
-    case "debug":
-      return "Gateway snapshots, events, and manual RPC calls.";
-    case "logs":
-      return "Live tail of the gateway file logs.";
-    default:
-      return "";
-  }
+export function subtitleForTab(tab: Tab): string {
+  const key = `tab.${tab}.subtitle`;
+  const result = t(key);
+  // If no translation found (returns the key), return empty string
+  return result === key ? "" : result;
 }
