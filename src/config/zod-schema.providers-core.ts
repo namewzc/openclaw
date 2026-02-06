@@ -663,6 +663,17 @@ export const IMessageAccountSchemaBase = z
       .optional(),
     heartbeat: ChannelHeartbeatVisibilitySchema,
     responsePrefix: z.string().optional(),
+    catchup: z
+      .object({
+        /** Whether catch-up is enabled (default: true). */
+        enabled: z.boolean().optional(),
+        /** Maximum messages to process per catch-up (default: 100). */
+        maxMessages: z.number().int().positive().optional(),
+        /** Ignore messages older than N hours (default: 24). */
+        maxAgeHours: z.number().positive().optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 

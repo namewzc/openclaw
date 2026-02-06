@@ -155,6 +155,60 @@ Default file:
 > Note: this is only emitted by processes using pi-mono’s
 > `openai-completions` provider.
 
+## Anthropic payload logging
+
+When using Anthropic-compatible providers (including Code-Relay), you can log
+request payloads and usage to inspect what is sent and returned:
+
+```bash
+OPENCLAW_ANTHROPIC_PAYLOAD_LOG=1 pnpm gateway:watch --force
+```
+
+Output file (default):
+
+`~/.openclaw/logs/anthropic-payload.jsonl`
+
+Each line is a JSON object with `stage` (`request` or `usage`), `payload` (the
+API request), `usage` (token counts), and optional `error`. Useful for
+debugging empty or unexpected responses.
+
+## Debugging empty assistant bubbles
+
+If the assistant bubble appears but stays empty (or shows only the reading
+indicator), enable these logs and reproduce the issue:
+
+1. **Raw stream** – see what the model actually returns (deltas, text_end, etc.):
+
+   ```bash
+   OPENCLAW_RAW_STREAM=1 pnpm gateway:watch --force
+   ```
+
+   Check `~/.openclaw/logs/raw-stream.jsonl` for `assistant_text_stream` and
+   `assistant_message_end` events. Empty `delta`/`content`/`rawText` suggests
+   the API returned no content.
+
+2. **Anthropic payload** (for Code-Relay and other Anthropic-compatible providers):
+
+   ```bash
+   OPENCLAW_ANTHROPIC_PAYLOAD_LOG=1 pnpm gateway:watch --force
+   ```
+
+   Check `~/.openclaw/logs/anthropic-payload.jsonl` for request and response
+   usage. Missing or empty content in the response explains an empty bubble.
+
+3. **Gateway logs** – look for errors or warnings:
+
+   ```bash
+   tail -f ~/.openclaw/logs/gateway.log
+   tail -f ~/.openclaw/logs/gateway.err.log
+   ```
+
+Common causes:
+
+- Model returns empty content (API or model issue).
+- All output is inside `<think>` tags and stripped for display.
+- Request format rejected or altered by the provider (e.g. system prompt).
+
 ## Safety notes
 
 - Raw stream logs can include full prompts, tool output, and user data.

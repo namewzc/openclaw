@@ -44,6 +44,7 @@ import {
 import { resolveAgentRoute } from "../../routing/resolve-route.js";
 import { truncateUtf16Safe } from "../../utils.js";
 import { resolveIMessageAccount } from "../accounts.js";
+import { performIMessageCatchup, updateIMessageOffset } from "../catchup/index.js";
 import { createIMessageRpcClient } from "../client.js";
 import { DEFAULT_IMESSAGE_PROBE_TIMEOUT_MS } from "../constants.js";
 import { probeIMessage } from "../probe.js";
@@ -678,6 +679,14 @@ export async function monitorIMessageProvider(opts: MonitorIMessageOpts = {}): P
     if (isGroup && historyKey) {
       clearHistoryEntriesIfEnabled({ historyMap: groupHistories, historyKey, limit: historyLimit });
     }
+
+    // Update offset state for catch-up tracking
+    void updateIMessageOffset({
+      accountId: accountInfo.accountId,
+      message,
+    }).catch((err) => {
+      logVerbose(`imessage: failed to update offset state: ${String(err)}`);
+    });
   }
 
   const handleMessage = async (raw: unknown) => {
@@ -745,6 +754,32 @@ export async function monitorIMessageProvider(opts: MonitorIMessageOpts = {}): P
     });
   };
   abort?.addEventListener("abort", onAbort, { once: true });
+
+  // Perform catch-up for missed messages during downtime (after client is ready)
+  const catchupConfig = imessageCfg.catchup;
+  const catchupResult = await performIMessageCatchup({
+    dbPath,
+    accountId: accountInfo.accountId,
+    config: {
+      enabled: catchupConfig?.enabled,
+      maxMessages: catchupConfig?.maxMessages,
+      maxAgeHours: catchupConfig?.maxAgeHours,
+    },
+    handleMessage: async (payload) => {
+      // Process through the debouncer to maintain same behavior as live messages
+      await inboundDebouncer.enqueue({ message: payload });
+    },
+    log: (msg) => logVerbose(msg),
+  });
+  if (catchupResult.processed > 0) {
+    logVerbose(`imessage: catch-up processed ${catchupResult.processed} missed messages`);
+  } else if (catchupResult.skipped && catchupResult.skipReason !== "first_run") {
+    logVerbose(`imessage: catch-up skipped (${catchupResult.skipReason})`);
+  }
+
+  if (opts.abortSignal?.aborted) {
+    return;
+  }
 
   try {
     const result = await client.request<{ subscription?: number }>("watch.subscribe", {

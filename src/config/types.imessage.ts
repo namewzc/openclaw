@@ -77,6 +77,15 @@ export type IMessageAccountConfig = {
   heartbeat?: ChannelHeartbeatVisibilityConfig;
   /** Outbound response prefix override for this channel/account. */
   responsePrefix?: string;
+  /** Catch-up configuration for processing missed messages on restart. */
+  catchup?: {
+    /** Whether catch-up is enabled (default: true). */
+    enabled?: boolean;
+    /** Maximum messages to process per catch-up (default: 100). */
+    maxMessages?: number;
+    /** Ignore messages older than N hours (default: 24). */
+    maxAgeHours?: number;
+  };
 };
 
 export type IMessageConfig = {

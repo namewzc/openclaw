@@ -321,10 +321,13 @@ export async function handleOpenAiHttpRequest(
     if (evt.stream === "lifecycle") {
       const phase = evt.data?.phase;
       if (phase === "end" || phase === "error") {
-        closed = true;
         unsubscribe();
-        writeDone(res);
-        res.end();
+        // Only close here if we already sent content; otherwise let the async block send fallback first to avoid "request ended without sending any chunks".
+        if (sawAssistantDelta) {
+          closed = true;
+          writeDone(res);
+          res.end();
+        }
       }
     }
   });
