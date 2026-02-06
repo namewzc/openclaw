@@ -81,6 +81,7 @@ import { prewarmSessionFile, trackSessionManagerAccess } from "../session-manage
 import { prepareSessionManagerForRun } from "../session-manager-init.js";
 import {
   applySystemPromptOverrideToSession,
+  buildCodeRelayBootstrap,
   buildEmbeddedSystemPrompt,
   createSystemPromptOverride,
 } from "../system-prompt.js";
@@ -205,44 +206,46 @@ export async function runEmbeddedAttempt(
 
     // Check if the model supports native image input
     const modelHasVision = params.model.input?.includes("image") ?? false;
-    const toolsRaw = params.disableTools
-      ? []
-      : createOpenClawCodingTools({
-          exec: {
-            ...params.execOverrides,
-            elevated: params.bashElevated,
-          },
-          sandbox,
-          messageProvider: params.messageChannel ?? params.messageProvider,
-          agentAccountId: params.agentAccountId,
-          messageTo: params.messageTo,
-          messageThreadId: params.messageThreadId,
-          groupId: params.groupId,
-          groupChannel: params.groupChannel,
-          groupSpace: params.groupSpace,
-          spawnedBy: params.spawnedBy,
-          senderId: params.senderId,
-          senderName: params.senderName,
-          senderUsername: params.senderUsername,
-          senderE164: params.senderE164,
-          senderIsOwner: params.senderIsOwner,
-          sessionKey: params.sessionKey ?? params.sessionId,
-          agentDir,
-          workspaceDir: effectiveWorkspace,
-          config: params.config,
-          abortSignal: runAbortController.signal,
-          modelProvider: params.model.provider,
-          modelId: params.modelId,
-          modelAuthMode: resolveModelAuthMode(params.model.provider, params.config),
-          currentChannelId: params.currentChannelId,
-          currentThreadTs: params.currentThreadTs,
-          replyToMode: params.replyToMode,
-          hasRepliedRef: params.hasRepliedRef,
-          modelHasVision,
-          requireExplicitMessageTarget:
-            params.requireExplicitMessageTarget ?? isSubagentSessionKey(params.sessionKey),
-          disableMessageTool: params.disableMessageTool,
-        });
+    // Code-Relay returns empty when tools are present; run without tools (text-only).
+    const toolsRaw =
+      params.disableTools || params.provider === "code-relay"
+        ? []
+        : createOpenClawCodingTools({
+            exec: {
+              ...params.execOverrides,
+              elevated: params.bashElevated,
+            },
+            sandbox,
+            messageProvider: params.messageChannel ?? params.messageProvider,
+            agentAccountId: params.agentAccountId,
+            messageTo: params.messageTo,
+            messageThreadId: params.messageThreadId,
+            groupId: params.groupId,
+            groupChannel: params.groupChannel,
+            groupSpace: params.groupSpace,
+            spawnedBy: params.spawnedBy,
+            senderId: params.senderId,
+            senderName: params.senderName,
+            senderUsername: params.senderUsername,
+            senderE164: params.senderE164,
+            senderIsOwner: params.senderIsOwner,
+            sessionKey: params.sessionKey ?? params.sessionId,
+            agentDir,
+            workspaceDir: effectiveWorkspace,
+            config: params.config,
+            abortSignal: runAbortController.signal,
+            modelProvider: params.model.provider,
+            modelId: params.modelId,
+            modelAuthMode: resolveModelAuthMode(params.model.provider, params.config),
+            currentChannelId: params.currentChannelId,
+            currentThreadTs: params.currentThreadTs,
+            replyToMode: params.replyToMode,
+            hasRepliedRef: params.hasRepliedRef,
+            modelHasVision,
+            requireExplicitMessageTarget:
+              params.requireExplicitMessageTarget ?? isSubagentSessionKey(params.sessionKey),
+            disableMessageTool: params.disableMessageTool,
+          });
     const tools = sanitizeToolsForGoogle({ tools: toolsRaw, provider: params.provider });
     logToolSchemasForGoogle({ tools, provider: params.provider });
 
@@ -337,7 +340,12 @@ export async function runEmbeddedAttempt(
       },
     });
     const isDefaultAgent = sessionAgentId === defaultAgentId;
-    const promptMode = isSubagentSessionKey(params.sessionKey) ? "minimal" : "full";
+    // Code Relay returns "claude system prompt not allowed" for long/custom prompts; use minimal identity-only prompt.
+    const promptMode = isSubagentSessionKey(params.sessionKey)
+      ? "minimal"
+      : params.provider === "code-relay"
+        ? "none"
+        : "full";
     const docsPath = await resolveOpenClawDocsPath({
       workspaceDir: effectiveWorkspace,
       argv1: process.argv[1],
@@ -396,7 +404,8 @@ export async function runEmbeddedAttempt(
       tools,
     });
     const systemPromptOverride = createSystemPromptOverride(appendPrompt);
-    const systemPromptText = systemPromptOverride();
+    // Code Relay rejects any system prompt (returns 500); omit system by sending empty so pi-ai leaves params.system unset.
+    const systemPromptText = params.provider === "code-relay" ? "" : systemPromptOverride();
 
     const sessionLock = await acquireSessionWriteLock({
       sessionFile: params.sessionFile,
@@ -513,7 +522,21 @@ export async function runEmbeddedAttempt(
       });
 
       // Force a stable streamFn reference so vitest can reliably mock @mariozechner/pi-ai.
-      activeSession.agent.streamFn = streamSimple;
+      // Code Relay rejects any system param (including empty string); strip from context so pi-ai never adds it.
+      // Also disable prompt caching (cache_control) as Code-Relay may not support it and can return empty responses.
+      const baseStreamFn = streamSimple;
+      activeSession.agent.streamFn =
+        params.provider === "code-relay"
+          ? (model, context, options) =>
+              baseStreamFn(
+                model,
+                { ...context, systemPrompt: undefined },
+                {
+                  ...options,
+                  cacheRetention: "none",
+                },
+              )
+          : baseStreamFn;
 
       applyExtraParamsToAgent(
         activeSession.agent,
@@ -737,6 +760,19 @@ export async function runEmbeddedAttempt(
           }
         }
 
+        // Code Relay rejects system prompts; inject condensed bootstrap into first user message.
+        // Only prepend on first turn (empty message history) so subsequent turns stay clean.
+        if (params.provider === "code-relay" && activeSession.messages.length === 0) {
+          const bootstrap = buildCodeRelayBootstrap({
+            workspaceDir: effectiveWorkspace,
+            tools,
+            agentId: sessionAgentId,
+            extraSystemPrompt: params.extraSystemPrompt,
+          });
+          effectivePrompt = `${bootstrap}\n${effectivePrompt}`;
+          log.debug(`code-relay: prepended bootstrap to first prompt (${bootstrap.length} chars)`);
+        }
+
         log.debug(`embedded run prompt start: runId=${params.runId} sessionId=${params.sessionId}`);
         cacheTrace?.recordStage("prompt:before", {
           prompt: effectivePrompt,
@@ -752,7 +788,12 @@ export async function runEmbeddedAttempt(
             sessionManager.resetLeaf();
           }
           const sessionContext = sessionManager.buildSessionContext();
-          activeSession.agent.replaceMessages(sessionContext.messages);
+          const repaired = transcriptPolicy.validateAnthropicTurns
+            ? validateAnthropicTurns(sessionContext.messages)
+            : transcriptPolicy.validateGeminiTurns
+              ? validateGeminiTurns(sessionContext.messages)
+              : sessionContext.messages;
+          activeSession.agent.replaceMessages(repaired);
           log.warn(
             `Removed orphaned user message to prevent consecutive user turns. ` +
               `runId=${params.runId} sessionId=${params.sessionId}`,

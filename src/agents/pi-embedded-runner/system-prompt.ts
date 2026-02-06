@@ -97,3 +97,30 @@ export function applySystemPromptOverrideToSession(
   mutableSession._baseSystemPrompt = prompt;
   mutableSession._rebuildSystemPrompt = () => prompt;
 }
+
+/**
+ * Build a condensed bootstrap prompt for Code Relay (which rejects system prompts).
+ * This gets prepended to the first user message so the model has essential context.
+ */
+export function buildCodeRelayBootstrap(params: {
+  workspaceDir: string;
+  tools: AgentTool[];
+  agentId?: string;
+  extraSystemPrompt?: string;
+}): string {
+  const toolNames = params.tools.map((t) => t.name).join(", ");
+  const hasTools = Boolean(toolNames);
+  const lines = [
+    "[System Context]",
+    "You are a coding assistant running in OpenClaw.",
+    `Workspace: ${params.workspaceDir}`,
+    hasTools ? `Available tools: ${toolNames}` : "",
+    hasTools
+      ? "Call tools exactly as listed (case-sensitive). Do not narrate routine tool calls."
+      : "",
+    params.extraSystemPrompt ? `Additional context: ${params.extraSystemPrompt}` : "",
+    "[End System Context]",
+    "",
+  ];
+  return lines.filter(Boolean).join("\n");
+}

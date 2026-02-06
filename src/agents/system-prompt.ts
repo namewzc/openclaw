@@ -65,6 +65,18 @@ function buildMemorySection(params: {
   return lines;
 }
 
+function buildWorklogSection(isMinimal: boolean) {
+  if (isMinimal) {
+    return [];
+  }
+  return [
+    "## Work Tracking",
+    "For task management, plans, progress, and work history: check WORKLOG.md in Project Context.",
+    "When the user mentions new tasks or completes work, update WORKLOG.md accordingly.",
+    "",
+  ];
+}
+
 function buildUserIdentitySection(ownerLine: string | undefined, isMinimal: boolean) {
   if (!ownerLine || isMinimal) {
     return [];
@@ -364,6 +376,7 @@ export function buildAgentSystemPrompt(params: {
     availableTools,
     citationsMode: params.memoryCitationsMode,
   });
+  const worklogSection = buildWorklogSection(isMinimal);
   const docsSection = buildDocsSection({
     docsPath: params.docsPath,
     isMinimal,
@@ -422,6 +435,7 @@ export function buildAgentSystemPrompt(params: {
     "",
     ...skillsSection,
     ...memorySection,
+    ...worklogSection,
     // Skip self-update for subagent/none modes
     hasGateway && !isMinimal ? "## OpenClaw Self-Update" : "",
     hasGateway && !isMinimal

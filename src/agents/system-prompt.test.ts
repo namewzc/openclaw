@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildCodeRelayBootstrap } from "./pi-embedded-runner/system-prompt.js";
 import { buildAgentSystemPrompt, buildRuntimeLine } from "./system-prompt.js";
 
 describe("buildAgentSystemPrompt", () => {
@@ -424,5 +425,54 @@ describe("buildAgentSystemPrompt", () => {
 
     expect(prompt).toContain("## Reactions");
     expect(prompt).toContain("Reactions are enabled for Telegram in MINIMAL mode.");
+  });
+});
+
+describe("buildCodeRelayBootstrap", () => {
+  it("includes workspace dir in the bootstrap", () => {
+    const bootstrap = buildCodeRelayBootstrap({
+      workspaceDir: "/home/user/project",
+      tools: [],
+    });
+    expect(bootstrap).toContain("/home/user/project");
+  });
+
+  it("lists tool names when provided", () => {
+    const bootstrap = buildCodeRelayBootstrap({
+      workspaceDir: "/tmp",
+      tools: [
+        { name: "read", description: "Read files", execute: async () => ({}) },
+        { name: "write", description: "Write files", execute: async () => ({}) },
+        { name: "exec", description: "Run commands", execute: async () => ({}) },
+      ],
+    });
+    expect(bootstrap).toContain("read, write, exec");
+  });
+
+  it("includes extra system prompt when provided", () => {
+    const bootstrap = buildCodeRelayBootstrap({
+      workspaceDir: "/tmp",
+      tools: [],
+      extraSystemPrompt: "Custom group context",
+    });
+    expect(bootstrap).toContain("Custom group context");
+  });
+
+  it("wraps content with system context markers", () => {
+    const bootstrap = buildCodeRelayBootstrap({
+      workspaceDir: "/tmp",
+      tools: [],
+    });
+    expect(bootstrap).toContain("[System Context]");
+    expect(bootstrap).toContain("[End System Context]");
+  });
+
+  it("omits tool instructions when no tools provided", () => {
+    const bootstrap = buildCodeRelayBootstrap({
+      workspaceDir: "/tmp",
+      tools: [],
+    });
+    expect(bootstrap).not.toContain("Available tools:");
+    expect(bootstrap).not.toContain("Call tools exactly");
   });
 });

@@ -322,7 +322,11 @@ export async function compactEmbeddedPiSessionDirect(
       config: params.config,
     });
     const isDefaultAgent = sessionAgentId === defaultAgentId;
-    const promptMode = isSubagentSessionKey(params.sessionKey) ? "minimal" : "full";
+    const promptMode = isSubagentSessionKey(params.sessionKey)
+      ? "minimal"
+      : params.provider === "code-relay"
+        ? "none"
+        : "full";
     const docsPath = await resolveOpenClawDocsPath({
       workspaceDir: effectiveWorkspace,
       argv1: process.argv[1],
@@ -357,6 +361,8 @@ export async function compactEmbeddedPiSessionDirect(
       memoryCitationsMode: params.config?.memory?.citations,
     });
     const systemPromptOverride = createSystemPromptOverride(appendPrompt);
+    // Code Relay rejects any system prompt; omit by passing empty so pi-ai leaves params.system unset.
+    const systemPromptToApply = provider === "code-relay" ? "" : systemPromptOverride();
 
     const sessionLock = await acquireSessionWriteLock({
       sessionFile: params.sessionFile,
@@ -409,7 +415,7 @@ export async function compactEmbeddedPiSessionDirect(
         sessionManager,
         settingsManager,
       });
-      applySystemPromptOverrideToSession(session, systemPromptOverride());
+      applySystemPromptOverrideToSession(session, systemPromptToApply);
 
       try {
         const prior = await sanitizeSessionHistory({

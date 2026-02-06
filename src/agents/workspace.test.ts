@@ -3,6 +3,7 @@ import { makeTempWorkspace, writeWorkspaceFile } from "../test-helpers/workspace
 import {
   DEFAULT_MEMORY_ALT_FILENAME,
   DEFAULT_MEMORY_FILENAME,
+  DEFAULT_WORKLOG_FILENAME,
   loadWorkspaceBootstrapFiles,
 } from "./workspace.js";
 
@@ -44,5 +45,17 @@ describe("loadWorkspaceBootstrapFiles", () => {
     );
 
     expect(memoryEntries).toHaveLength(0);
+  });
+
+  it("includes WORKLOG.md when present", async () => {
+    const tempDir = await makeTempWorkspace("openclaw-workspace-");
+    await writeWorkspaceFile({ dir: tempDir, name: "WORKLOG.md", content: "# WORKLOG" });
+
+    const files = await loadWorkspaceBootstrapFiles(tempDir);
+    const worklogEntry = files.find((file) => file.name === DEFAULT_WORKLOG_FILENAME);
+
+    expect(worklogEntry).toBeDefined();
+    expect(worklogEntry?.missing).toBe(false);
+    expect(worklogEntry?.content).toBe("# WORKLOG");
   });
 });
